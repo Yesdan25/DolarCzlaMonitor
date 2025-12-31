@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">DolarCzlaMonitor</string>
+    <string name="widget_description">Monitor de tasas de cambio del dólar en Venezuela</string>
+</resources>

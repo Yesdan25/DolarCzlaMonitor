@@ -1,0 +1,734 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
+package com.yesdan.dolarczlamonitor.ui.screen
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.yesdan.dolarczlamonitor.data.model.ExchangeRate
+import com.yesdan.dolarczlamonitor.ui.viewmodel.ExchangeRateUiState
+import com.yesdan.dolarczlamonitor.ui.viewmodel.HomeViewModel
+import com.yesdan.dolarczlamonitor.utils.ShareUtils
+import com.yesdan.dolarczlamonitor.ui.components.AdBanner
+import com.yesdan.dolarczlamonitor.data.remote.RemoteConfigRepository
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.abs
+
+@Composable
+fun HomeScreen(
+    viewModel: HomeViewModel,
+    isDarkMode: Boolean,
+    userCity: String? = null,
+    remoteConfigRepository: RemoteConfigRepository,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    var adImageUrl by remember { mutableStateOf<String?>(null) }
+    var adLinkUrl by remember { mutableStateOf<String?>(null) }
+    var adTargetCity by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(Unit) {
+        adImageUrl = remoteConfigRepository.getAdImageUrl()
+        adLinkUrl = remoteConfigRepository.getAdLinkUrl()
+        adTargetCity = remoteConfigRepository.getAdTargetCity()
+    }
+
+    val shouldShowAd = remember(adImageUrl, adTargetCity, userCity) {
+        !adImageUrl.isNullOrEmpty() && 
+        (adTargetCity == "Todas" || adTargetCity == userCity)
+    }
+
+    val backgroundGradient = if (isDarkMode) {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF121212), // Casi negro
+                Color(0xFF1E1E1E)  // Gris oscuro
+            )
+        )
+    } else {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFFF0F2F5), // Gris Pastel Claro
+                Color(0xFFE0E5EC)  // Gris Azulado más oscuro
+            )
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(backgroundGradient)
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Monitor Cambiario",
+                            color = if (isDarkMode) Color.White else Color(0xFF2D3436),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = if (isDarkMode)
+                            Color(0xFF1E1E1E).copy(alpha = 0.9f)
+                        else
+                            Color.White.copy(alpha = 0.55f)
+                    ),
+                    actions = {
+                        IconButton(onClick = { viewModel.loadRates() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Actualizar",
+                                tint = if (isDarkMode) Color.White else Color(0xFF2D3436)
+                            )
+                        }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when (val state = uiState) {
+                    is ExchangeRateUiState.Loading -> {
+                        LoadingState(isDarkMode = isDarkMode)
+                    }
+                    is ExchangeRateUiState.Success -> {
+                        SuccessState(
+                            dollarRates = state.dollarRates,
+                            euroRates = state.euroRates,
+                            dollarSpreadPercentage = state.dollarSpreadPercentage,
+                            euroSpreadPercentage = state.euroSpreadPercentage,
+                            isDarkMode = isDarkMode,
+                            shouldShowAd = shouldShowAd,
+                            adImageUrl = adImageUrl,
+                            adLinkUrl = adLinkUrl
+                        )
+                    }
+                    is ExchangeRateUiState.Error -> {
+                        ErrorState(
+                            message = state.message,
+                            onRetry = { viewModel.loadRates() },
+                            isDarkMode = isDarkMode
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingState(isDarkMode: Boolean) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(64.dp),
+                color = Color(0xFF6C5CE7)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Cargando tasas de cambio...",
+                color = if (isDarkMode) Color.White else Color(0xFF2D3436),
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun SuccessState(
+    dollarRates: List<ExchangeRate>,
+    euroRates: List<ExchangeRate>,
+    dollarSpreadPercentage: Double?,
+    euroSpreadPercentage: Double?,
+    isDarkMode: Boolean,
+    shouldShowAd: Boolean,
+    adImageUrl: String?,
+    adLinkUrl: String?
+) {
+    val bcvDollarRate = dollarRates.find { it.source == "BCV" && it.currency == "USD" }
+    val binanceRate = dollarRates.find { it.source == "Binance" && it.currency == "USD" }
+    val bcvEuroRate = euroRates.find { it.source == "BCV" && it.currency == "EUR" }
+    val euroParaleloRate = euroRates.find { it.source == "Paralelo" && it.currency == "EUR" }
+
+    var inputAmount by remember { mutableStateOf("") }
+
+    val cardColor = if (isDarkMode)
+        Color(0xFF2D2D2D).copy(alpha = 0.9f)
+    else
+        Color.White.copy(alpha = 0.55f)
+
+    val textColor = if (isDarkMode) Color.White else Color(0xFF2D3436)
+    val secondaryTextColor = if (isDarkMode) Color(0xFFB0B0B0) else Color(0xFF636E72)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+
+        if (bcvDollarRate != null) {
+            CurrencyCard(
+                title = "BCV",
+                price = bcvDollarRate.price,
+                currency = "USD",
+                lastUpdated = bcvDollarRate.lastUpdated,
+                modifier = Modifier.fillMaxWidth(),
+                cardColor = cardColor,
+                textColor = textColor,
+                secondaryTextColor = secondaryTextColor,
+                isDarkMode = isDarkMode
+            )
+        }
+
+        if (dollarSpreadPercentage != null && bcvDollarRate != null && binanceRate != null &&
+            bcvDollarRate.price > 0 && binanceRate.price > 0) {
+            SpreadIndicator(
+                spreadPercentage = dollarSpreadPercentage,
+                modifier = Modifier.fillMaxWidth(),
+                isDarkMode = isDarkMode
+            )
+        }
+
+        if (binanceRate != null) {
+            CurrencyCard(
+                title = "Binance P2P",
+                price = binanceRate.price,
+                currency = "USD",
+                modifier = Modifier.fillMaxWidth(),
+                cardColor = cardColor,
+                textColor = textColor,
+                secondaryTextColor = secondaryTextColor,
+                isDarkMode = isDarkMode
+            )
+        }
+
+        if (euroRates.isNotEmpty()) {
+            HorizontalDivider(
+                color = if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB2BEC3).copy(alpha = 0.5f),
+                thickness = 1.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            Text(
+                text = "💶 Euro",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = textColor,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            if (bcvEuroRate != null) {
+                CurrencyCard(
+                    title = "BCV",
+                    price = bcvEuroRate.price,
+                    currency = "EUR",
+                    lastUpdated = bcvEuroRate.lastUpdated,
+                    modifier = Modifier.fillMaxWidth(),
+                    cardColor = cardColor,
+                    textColor = textColor,
+                    secondaryTextColor = secondaryTextColor,
+                    isDarkMode = isDarkMode
+                )
+            }
+
+            if (euroSpreadPercentage != null && bcvEuroRate != null && euroParaleloRate != null &&
+                bcvEuroRate.price > 0 && euroParaleloRate.price > 0) {
+                SpreadIndicator(
+                    spreadPercentage = euroSpreadPercentage,
+                    modifier = Modifier.fillMaxWidth(),
+                    isDarkMode = isDarkMode
+                )
+            }
+
+            if (euroParaleloRate != null) {
+                CurrencyCard(
+                    title = "Euro Paralelo",
+                    price = euroParaleloRate.price,
+                    currency = "EUR",
+                    modifier = Modifier.fillMaxWidth(),
+                    cardColor = cardColor,
+                    textColor = textColor,
+                    secondaryTextColor = secondaryTextColor,
+                    isDarkMode = isDarkMode
+                )
+            }
+        }
+
+        HorizontalDivider(
+            color = if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB2BEC3).copy(alpha = 0.5f),
+            thickness = 1.dp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        CalculatorSection(
+            inputAmount = inputAmount,
+            onAmountChange = { inputAmount = it },
+            bcvDollarPrice = bcvDollarRate?.price ?: 0.0,
+            binancePrice = binanceRate?.price ?: 0.0,
+            bcvEuroPrice = bcvEuroRate?.price ?: 0.0,
+            euroParaleloPrice = euroParaleloRate?.price ?: 0.0,
+            showEuro = euroRates.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth(),
+            cardColor = cardColor,
+            textColor = textColor,
+            secondaryTextColor = secondaryTextColor,
+            isDarkMode = isDarkMode
+        )
+
+        if (shouldShowAd && adImageUrl != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            AdBanner(
+                imageUrl = adImageUrl,
+                linkUrl = adLinkUrl,
+                modifier = Modifier.fillMaxWidth(),
+                cardColor = cardColor,
+                isDarkMode = isDarkMode
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "DolarVzla Monitor - v1.0",
+            fontSize = 12.sp,
+            color = secondaryTextColor,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(100.dp))
+    }
+}
+
+@Composable
+private fun CurrencyCard(
+    title: String,
+    price: Double,
+    currency: String,
+    lastUpdated: Long? = null,
+    modifier: Modifier = Modifier,
+    cardColor: Color,
+    textColor: Color,
+    secondaryTextColor: Color,
+    isDarkMode: Boolean
+) {
+    val formatter = java.text.NumberFormat.getNumberInstance(Locale.US)
+    formatter.minimumFractionDigits = 2
+    formatter.maximumFractionDigits = 2
+
+    val dateFormat = if (lastUpdated != null) {
+        SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    } else null
+    val dateString = lastUpdated?.let { dateFormat?.format(Date(it)) }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    Surface(
+        modifier = modifier
+            .shadow(8.dp, RoundedCornerShape(24.dp), clip = false, ambientColor = Color.Gray.copy(alpha = 0.2f), spotColor = Color.Gray.copy(alpha = 0.2f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.8f)), RoundedCornerShape(24.dp)),
+        color = cardColor,
+        shape = RoundedCornerShape(24.dp),
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 14.sp,
+                    color = secondaryTextColor,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (price > 0) {
+                    Text(
+                        text = "${formatter.format(price)} Bs",
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    )
+                } else {
+                    Text(
+                        text = "No disponible",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = secondaryTextColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (price > 0 && dateString != null) {
+                    Text(
+                        text = "Actualizado: $dateString",
+                        fontSize = 12.sp,
+                        color = secondaryTextColor
+                    )
+                } else if (price > 0) {
+                    Text(
+                        text = "Tendencia: Alcista",
+                        fontSize = 12.sp,
+                        color = Color(0xFF00B894)
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = {
+                    scope.launch {
+                        ShareUtils.shareCardImage(
+                            context = context,
+                            title = title,
+                            price = price,
+                            currency = currency,
+                            lastUpdated = lastUpdated,
+                            isDarkMode = isDarkMode
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Compartir",
+                    tint = secondaryTextColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpreadIndicator(
+    spreadPercentage: Double,
+    modifier: Modifier = Modifier,
+    isDarkMode: Boolean
+) {
+    val absSpread = abs(spreadPercentage)
+    val indicatorColor = when {
+        absSpread > 3.0 -> Color(0xFFE17055)
+        absSpread > 1.5 -> Color(0xFFFDCB6E)
+        else -> Color(0xFF00B894)
+    }
+
+    Box(
+        modifier = modifier.padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "🔻 Diferencia: ${String.format(Locale.US, "%.2f", absSpread)}% vs Oficial",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = indicatorColor,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun CalculatorSection(
+    inputAmount: String,
+    onAmountChange: (String) -> Unit,
+    bcvDollarPrice: Double,
+    binancePrice: Double,
+    bcvEuroPrice: Double,
+    euroParaleloPrice: Double,
+    showEuro: Boolean,
+    modifier: Modifier = Modifier,
+    cardColor: Color,
+    textColor: Color,
+    secondaryTextColor: Color,
+    isDarkMode: Boolean
+) {
+    val formatter = java.text.NumberFormat.getNumberInstance(Locale.US)
+    formatter.minimumFractionDigits = 2
+    formatter.maximumFractionDigits = 2
+
+    val amount = inputAmount.toDoubleOrNull() ?: 0.0
+    val bcvDollarResult = if (bcvDollarPrice > 0 && amount > 0) amount * bcvDollarPrice else 0.0
+    val binanceResult = if (binancePrice > 0 && amount > 0) amount * binancePrice else 0.0
+    val bcvEuroResult = if (bcvEuroPrice > 0 && amount > 0) amount * bcvEuroPrice else 0.0
+    val euroParaleloResult = if (euroParaleloPrice > 0 && amount > 0) amount * euroParaleloPrice else 0.0
+
+    Surface(
+        modifier = modifier
+            .shadow(8.dp, RoundedCornerShape(24.dp), clip = false, ambientColor = Color.Gray.copy(alpha = 0.2f), spotColor = Color.Gray.copy(alpha = 0.2f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.8f)), RoundedCornerShape(24.dp)),
+        color = cardColor,
+        shape = RoundedCornerShape(24.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "🧮 Calculadora Rápida",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = textColor
+            )
+
+            OutlinedTextField(
+                value = inputAmount,
+                onValueChange = { newValue ->
+                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                        onAmountChange(newValue)
+                    }
+                },
+                label = {
+                    Text(
+                        "Monto en ${if (showEuro) "Dólares o Euros" else "Dólares"}",
+                        color = secondaryTextColor
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = textColor,
+                    unfocusedTextColor = textColor,
+                    focusedBorderColor = Color(0xFF6C5CE7),
+                    unfocusedBorderColor = if (isDarkMode) Color(0xFF4A4A4A) else Color(0xFFB2BEC3).copy(alpha = 0.5f),
+                    focusedLabelColor = secondaryTextColor,
+                    unfocusedLabelColor = secondaryTextColor
+                ),
+                singleLine = true
+            )
+
+            if (amount > 0 && (bcvDollarPrice > 0 || binancePrice > 0 || (showEuro && (bcvEuroPrice > 0 || euroParaleloPrice > 0)))) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (!showEuro) {
+
+                        if (bcvDollarPrice > 0) {
+                            Text(
+                                text = "En BCV: ${formatter.format(bcvDollarResult)} Bs",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = textColor
+                            )
+                        }
+
+                        if (binancePrice > 0) {
+                            Text(
+                                text = "En Paralelo: ${formatter.format(binanceResult)} Bs",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = textColor
+                            )
+                        }
+                    } else {
+
+
+                        if (bcvDollarPrice > 0 || binancePrice > 0) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "🇺🇸 USD:",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    if (bcvDollarPrice > 0) {
+                                        Text(
+                                            text = "${formatter.format(bcvDollarResult)} Bs",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = textColor
+                                        )
+                                    }
+                                    if (binancePrice > 0) {
+                                        Text(
+                                            text = "| ${formatter.format(binanceResult)} Bs",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = textColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (bcvEuroPrice > 0 || euroParaleloPrice > 0) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "🇪🇺 EUR:",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    if (bcvEuroPrice > 0) {
+                                        Text(
+                                            text = "${formatter.format(bcvEuroResult)} Bs",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = textColor
+                                        )
+                                    }
+                                    if (euroParaleloPrice > 0) {
+                                        Text(
+                                            text = "| ${formatter.format(euroParaleloResult)} Bs",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = textColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    isDarkMode: Boolean
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text(
+                text = "Error",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFE17055),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = message,
+                fontSize = 16.sp,
+                color = if (isDarkMode) Color.White else Color(0xFF2D3436),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            androidx.compose.material3.Button(
+                onClick = onRetry,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF6C5CE7)
+                )
+            ) {
+                Text(
+                    text = "Reintentar",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+
