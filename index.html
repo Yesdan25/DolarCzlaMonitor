@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DolarVzla Monitor | Yesdam_</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --text-color: #ffffff;
+            --accent-color: #00d2ff;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            background-image: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #000000 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .ambient-light {
+            position: fixed;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0, 210, 255, 0.15) 0%, rgba(0,0,0,0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            text-align: center;
+            padding-top: 80px;
+            padding-bottom: 50px;
+        }
+
+        .logo-img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);
+            margin-bottom: 20px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #333, #111); 
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0;
+            background: linear-gradient(90deg, #fff, #aaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        p.subtitle {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-top: 10px;
+            margin-bottom: 40px;
+        }
+
+        .btn-download {
+            display: inline-block;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            color: white;
+            padding: 18px 40px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 10px 20px rgba(0, 210, 255, 0.3);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btn-download:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 210, 255, 0.5);
+        }
+
+        .version {
+            display: block;
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 60px;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            padding: 30px;
+            border-radius: 20px;
+            width: 250px;
+            text-align: left;
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+
+        .card p {
+            color: #ccc;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 40px;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: #777;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-light"></div>
+
+    <div class="container">
+        <img src="logo.png" alt="Logo DolarVzla" class="logo-img">
+        
+        <h1>DolarVzla Monitor</h1>
+        <p class="subtitle">La tasa al día, en tu bolsillo. Diseño Premium.</p>
+
+        <a href="https://github.com/Yesdan25/DolarCzlaMonitor/releases/download/v1.0/DolarCzMonitor.apk" class="btn-download">
+            Descargar para Android (.APK)
+        </a>
+        <span class="version">Versión 1.0 • Gratis • Seguro</span>
+
+        <div class="features">
+            <div class="card">
+                <h3>⚡ Tiempo Real</h3>
+                <p>Monitorea el dólar BCV y Paralelo con actualizaciones al instante.</p>
+            </div>
+            <div class="card">
+                <h3>🧮 Calculadora</h3>
+                <p>Convierte de Dólares a Bolívares y viceversa sin salir de la app.</p>
+            </div>
+            <div class="card">
+                <h3>🔒 Seguro</h3>
+                <p>Desarrollo nativo ligero, sin publicidad intrusiva y modo oscuro.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 <strong>Yesdam_</strong> Development.</p>
+        <p>Todos los derechos reservados.</p>
+    </footer>
+
+</body>
+</html>
